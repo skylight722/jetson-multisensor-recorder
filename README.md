@@ -1,93 +1,103 @@
-# Jetson multi-sensor recorder
+# Jetson Multi-Sensor Recorder
 
-ROS 2 recording stack for four Tier IV C2 cameras and a Livox MID-360 on a Jetson AGX Orin. The system was developed to capture camera, LiDAR and IMU data together while retaining the timing information needed for offline sensor processing.
+A ROS 2 recording stack for four Tier IV C2 cameras and a Livox MID-360 on the Jetson AGX Orin. It was developed to collect camera, LiDAR and IMU data with consistent timestamps for offline analysis.
 
-This repository contains the V6 recording scripts and modified camera driver. It is a **source release candidate**, not a one-command installer: board-level camera configuration, the original Docker environment and site-specific calibration files still need to be reconstructed and tested.
+The repository contains the recording scripts, a modified V4L2 camera driver, ROS 2 support packages and host-side time synchronization tools used in the V6 recording system.
 
-## System overview
+## Overview
+
+The recorder brings several sensor streams into ROS 2 and stores them in a single MCAP dataset:
+
+- **Cameras:** Four Tier IV C2 (IMX490) cameras, triggered at 30 Hz. The modified camera node separates frame capture from image processing, resizes the images and publishes JPEG-compressed frames.
+- **LiDAR and IMU:** Livox MID-360 data recorded at nominal rates of 10 Hz and 200 Hz, respectively.
+- **Time synchronization:** TSC-generated camera FSYNC, per-camera ReadOutDelay settings, PTP for the LiDAR, and NvPPS timestamp correlation.
+- **Recording and validation:** `rosbag2` with MCAP storage, followed by checks of message counts, rates, timestamps, frame sequences and recording coverage.
 
 ```text
-Tier IV C2 cameras (4 × 30 fps)
-    └─ V4L2 capture → bounded queue → resize + JPEG → ROS 2
-Livox MID-360 (LiDAR 10 Hz, IMU 200 Hz) ──────────────→ ROS 2
-TSC / NvPPS / PTP timing information ─────────────────→ ROS 2
-                                                       │
-                                               rosbag2 / MCAP
-                                                       │
-                                              dataset validation
+4 × Tier IV C2 cameras ── V4L2 → resize / JPEG ─┐
+Livox MID-360 ─────────── LiDAR / IMU ───────────┼─→ ROS 2 → rosbag2 (MCAP)
+TSC / PTP / NvPPS ─────── timing metadata ──────┘                 │
+                                                             validation
 ```
 
-Each camera runs in a separate `v4l2_camera_node` process. The modified driver separates V4L2 acquisition from image processing and publishes `sensor_msgs/CompressedImage` directly. The recording process checks required topics before starting the recorder, then verifies the resulting dataset.
-
-### Recording configuration
+## Platform
 
 | Component | Configuration |
 | --- | --- |
-| Compute | Jetson AGX Orin Devkit, JetPack 6.2.1 / Ubuntu 22.04 |
-| Middleware | ROS 2 Humble |
-| Cameras | 4 × Tier IV C2 (IMX490), 2880 × 1860 UYVY, 30 fps |
-| Recorded images | 1920 × 1240 JPEG (quality 95) |
-| Camera processing | One capture thread and one processing worker per camera; queue capacity 8 |
-| LiDAR / IMU | Livox MID-360, nominally 10 Hz / 200 Hz |
-| Timing | TSC-generated 30 Hz FSYNC, camera ReadOutDelay, PTP and NvPPS |
-| Storage | rosbag2 with MCAP, 2 GiB recorder cache |
-| Recorded topics | 15 required topics: images, timestamp/exposure debug, LiDAR, IMU and NvPPS |
+| Computer | Jetson AGX Orin Devkit |
+| OS / SDK | Ubuntu 22.04, JetPack 6.2.1 |
+| ROS | ROS 2 Humble (Docker) |
+| Cameras | 4 × Tier IV C2 (IMX490), 2880 × 1860 UYVY at 30 fps |
+| Recorded images | 1920 × 1240 JPEG, quality 95 |
+| Camera pipeline | V4L2 capture thread + processing worker, queue capacity 8 |
+| LiDAR / IMU | Livox MID-360, 10 Hz / 200 Hz (nominal) |
+| Output | 15 ROS 2 topics recorded in MCAP |
 
-## Source layout
+The camera conversion pipeline uses `nvvidconv` and `nvjpegenc` on the Jetson platform. The recorder also saves configuration snapshots, logs and validation results alongside each dataset.
+
+## Repository structure
 
 ```text
-recording_stack/   Recording commands, camera launch, QoS settings and validation
-ros2_ws/src/       Modified camera driver and three supporting ROS 2 packages
-host_setup/        TSC trigger source and captured linuxptp/systemd configuration
-config/            Example deployment settings and Livox configuration template
-scripts/           Source checks (no hardware access)
-docs/              Hardware requirements, dependencies and outstanding setup work
+recording_stack/   Recording control, camera launch and dataset validation
+ros2_ws/src/       Camera driver and supporting ROS 2 packages
+host_setup/        FSYNC source and PTP service configuration
+config/            Example deployment and Livox settings
+scripts/           Source checks and environment inspection
+docs/              Hardware, dependencies and deployment notes
 ```
 
-The principal entry point is `recording_stack/time_sync_stack_v6_fsync.sh`. It manages FSYNC and delegates the recording lifecycle to `time_sync_stack_v6_core.sh`. After recording, `finalize_offline_dataset_v6_fsync.py` checks message rates, timestamps, camera frame sequences, JPEG data, timing coverage and other recording conditions.
+The main recording entry point is `recording_stack/time_sync_stack_v6_fsync.sh`. It handles FSYNC checks and delegates the recording sequence to `time_sync_stack_v6_core.sh`. Dataset validation is implemented in `finalize_offline_dataset_v6_fsync.py`.
 
-## Commands
+## Usage
 
-On the **configured original Orin environment**, the host-side commands are:
+On the **original, configured Orin system**, recording is controlled from the host:
 
 ```bash
 cd /path/to/lidar_camera_recording_stack
+
 ./time_sync_stack_v6_fsync.sh precheck
 ./time_sync_stack_v6_fsync.sh record 60 test_run
 ./time_sync_stack_v6_fsync.sh status
 ```
 
-These are the V6 commands, not verified installation instructions for this reorganized checkout. Do not run the copied scripts against the active recording system without reviewing the deployment paths, container mounts, camera calibration and device configuration first.
+The recording command above requests a 60-second run named `test_run`. After the recording finishes, the finalizer writes its detailed report to `validation/result.txt` and marks the dataset `READY` or `NOT_READY` according to the recording checks.
 
-The recorder writes a run directory containing the MCAP bag, calibration/configuration snapshots, timing metadata, log files, a validation report and a `READY` or `NOT_READY` marker. The full validation summary is saved at `validation/result.txt`; the terminal shows a shorter overview.
+These commands describe the deployed V6 workflow. **This reorganized repository has not yet been tested as a fresh installation.** Before using it on another Jetson, the Docker environment, camera mapping, calibration files and board-specific FSYNC settings must be configured and tested.
 
-## Reference recording
-
-A 300-second test on the **original deployed stack** (2026-08-24) reported approximately 29.999 Hz per camera, 9,122–9,123 JPEG frames per camera and a 303.047-second common usable interval. During the bag recording interval, the measured camera sequence-missing count and increases in queue overflow and encode failures were zero. The finalizer reported `READY`.
-
-These results describe that tested deployment. They have not yet been reproduced with the files in this repository.
-
-## Before a clean deployment
-
-The current snapshot depends on the following items, which are **not fully provided** here:
-
-- Tier IV camera SDK and the board's pinmux / Device Tree / MAX9296 modifications for FSYNC.
-- A reproducible Docker image. The original recording image adds a layer to an older development image; its complete build recipe is still being recovered.
-- A pinned Livox driver source revision and device-specific network settings. The installed package was `livox_ros_driver2` 1.0.0.
-- The four cameras' calibration YAML files and matching `/dev/video*` device mapping.
-
-The files under `host_setup/` capture one board's settings; they are not portable installation scripts. See [deployment notes](docs/DEPLOYMENT_ENVIRONMENT.md), [hardware and time synchronization](docs/HOST_AND_TIME_SYNC.md), and [remaining requirements](docs/REPRODUCIBILITY_GAPS.md).
-
-For source-only checks, run:
+For a syntax and package-metadata check that does not require a Jetson:
 
 ```bash
 bash scripts/check_source_snapshot.sh
 ```
 
-This checks syntax and package metadata. It does not build ROS 2 packages or test recording hardware.
+## Reference recording
 
-## Upstream code and licenses
+In a 300-second recording test on 2026-08-24 using the original Orin deployment:
 
-The camera package is based on [Tier IV's `ros2_v4l2_camera`](https://github.com/tier4/ros2_v4l2_camera) (`galactic`, base commit `ed965b487b8d23ebaa477a9eb2c6ce4cf3c151a0`) and retains its upstream Apache-2.0 license. The NvPPS package contains an NVIDIA header marked `GPL-2.0-only`. These notices must be preserved. Ownership and redistribution permissions for the rest of the project still need review before applying a repository-wide license.
+| Metric | Observed result |
+| --- | --- |
+| Camera rate | Approximately 29.999 Hz per camera |
+| JPEG frames | 9,122–9,123 per camera in the measured capture window |
+| Common usable sensor interval | 303.047 s |
+| Missing camera frame sequences during bag recording | 0 |
+| Increase in queue overflow / JPEG encoding failures during bag recording | 0 |
+| Final dataset check | `READY` |
 
-See [package provenance and licensing](docs/ROS2_PACKAGES_AND_LICENSING.md).
+These measurements are from the original recording environment; the reorganized source release has not yet been independently tested on hardware.
+
+## Deployment notes
+
+The current source is provided for inspection and further development. A clean deployment still requires the Tier IV camera SDK and board-level pinmux/Device Tree/MAX9296 setup, a reproducible Docker environment, camera calibration files and a matching Livox driver installation. The original Livox installation reported `livox_ros_driver2` version 1.0.0.
+
+Details are collected in:
+
+- [Deployment environment](docs/DEPLOYMENT_ENVIRONMENT.md)
+- [Host FSYNC and PTP configuration](docs/HOST_AND_TIME_SYNC.md)
+- [Livox driver dependency](docs/LIVOX_DEPENDENCY.md)
+- [Reproducibility notes](docs/REPRODUCIBILITY_GAPS.md)
+
+## Third-party code
+
+The camera package is derived from [Tier IV's `ros2_v4l2_camera`](https://github.com/tier4/ros2_v4l2_camera) (`galactic`, base commit `ed965b487b8d23ebaa477a9eb2c6ce4cf3c151a0`) and retains its Apache-2.0 license. The NvPPS package includes an NVIDIA header marked `GPL-2.0-only`. Existing copyright and license notices must be preserved; a repository-wide license has not been assigned while the remaining provenance is reviewed.
+
+See [ROS 2 package provenance and licenses](docs/ROS2_PACKAGES_AND_LICENSING.md).
