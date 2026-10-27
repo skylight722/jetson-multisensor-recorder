@@ -38,7 +38,7 @@ using v4l2_camera::CaptureTimestampMetadata;
 using v4l2_camera::V4l2CameraDevice;
 using sensor_msgs::msg::Image;
 
-// PHASE4B2_TIMESTAMP_DEBUG
+// Helpers for capturing clock observations at frame dequeue.
 namespace
 {
 
@@ -94,7 +94,7 @@ V4l2CameraDevice::V4l2CameraDevice(std::string device, bool use_v4l2_buffer_time
 
 bool V4l2CameraDevice::open()
 {
-  // Check if TSC offset applies
+  // Initialize the TSC-to-system-time offset before capture.
   setTSCOffset();
   
   fd_ = ::open(device_.c_str(), O_RDWR);
@@ -359,8 +359,7 @@ V4l2CameraDevice::capture()
     };
   }
 
-  // PHASE4B2_TIMESTAMP_DEBUG
-  // Collect all clock-domain observations immediately after DQBUF.
+  // Sample the available clocks immediately after VIDIOC_DQBUF.
   CaptureTimestampMetadata timestamp_metadata{};
 
   timestamp_metadata.sequence = buf.sequence;
@@ -443,7 +442,7 @@ V4l2CameraDevice::capture()
   timestamp_metadata.configured_timestamp_offset_ns =
     timestamp_offset_.nanoseconds();
 
-  // Preserve the original timestamp calculation for this experiment.
+  // Convert the V4L2 buffer timestamp into the ROS time domain.
   if (use_v4l2_buffer_timestamps_) {
     buf_stamp = rclcpp::Time(
       static_cast<int64_t>(buf.timestamp.tv_sec) * 1000000000LL +
@@ -812,7 +811,7 @@ void V4l2CameraDevice::listControls()
   while (ioctl(fd_, VIDIOC_QUERY_EXT_CTRL, &queryctrl) == 0) {
     // Ignore disabled controls
     if (queryctrl.flags & (V4L2_CTRL_FLAG_DISABLED | V4L2_CTRL_FLAG_READ_ONLY)) {
-      // Advance to the next control before skipping this read-only/disabled control.
+      // Advance the iterator before skipping this control.
       queryctrl.id |= V4L2_CTRL_FLAG_NEXT_CTRL;
       continue;
     }

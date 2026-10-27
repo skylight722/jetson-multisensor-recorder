@@ -94,14 +94,14 @@ require_environment()
   [[ -f "$CAMERA_SCRIPT" ]] || die "Missing: $CAMERA_SCRIPT"
   [[ -f "$COMPONENT_SCRIPT" ]] || die "Missing: $COMPONENT_SCRIPT"
   [[ -f "$FINALIZER" ]] || die "Missing: $FINALIZER"
-  [[ -x "$EXPOSURE_SCRIPT" ]]     || die "Missing or not executable: $EXPOSURE_SCRIPT"
+  [[ -x "$EXPOSURE_SCRIPT" ]] || die "Missing or not executable: $EXPOSURE_SCRIPT"
 
-  (( ${#TOPICS[@]} == ${#EXPECTED_TYPES[@]} ))     || die "TOPICS / EXPECTED_TYPES length mismatch"
+  (( ${#TOPICS[@]} == ${#EXPECTED_TYPES[@]} )) || die "TOPICS / EXPECTED_TYPES length mismatch"
 
-  (( ${#TOPICS[@]} == BASE_TOPIC_COUNT + EXPOSURE_TOPIC_COUNT ))     || die "Unexpected v6 required topic count"
+  (( ${#TOPICS[@]} == BASE_TOPIC_COUNT + EXPOSURE_TOPIC_COUNT )) || die "Unexpected v6 required topic count"
 
   if [[ "$READOUT_DELAY_ENABLED" == "true" ]]; then
-    [[ -x "$READOUT_DELAY_SCRIPT" ]]       || die "Missing or not executable: $READOUT_DELAY_SCRIPT"
+    [[ -x "$READOUT_DELAY_SCRIPT" ]] || die "Missing or not executable: $READOUT_DELAY_SCRIPT"
   fi
 
   mkdir -p "$DATA_ROOT"
@@ -177,7 +177,7 @@ create_run()
 
   if [[ -n "$FSYNC_RUNTIME_INFO" &&
         -f "$FSYNC_RUNTIME_INFO" ]]; then
-    cp -a       "$FSYNC_RUNTIME_INFO"       "$run/config/fsync_runtime.env"
+    cp -a "$FSYNC_RUNTIME_INFO" "$run/config/fsync_runtime.env"
   fi
 
   df -h "$DATA_ROOT" > "$run/config/storage_before.txt" 2>&1 || true
@@ -442,7 +442,7 @@ resume_recorder()
     return 1
   fi
 
-  # Verify that rosbag2 actually left the initial paused state.
+  # Confirm that rosbag2 resumed before recording the run.
   deadline=$((SECONDS + 5))
   while (( SECONDS < deadline )); do
     if grep -Fq "Resuming recording." "$run/logs/recorder.log" 2>/dev/null ||
@@ -628,9 +628,8 @@ stop_ptp_stack()
 {
   log "Stopping PTP target and child services"
 
-  # A target's Requires= dependencies are started with the target, but
-  # stopping the target alone does not necessarily stop those services.
-  # Stop all three units explicitly so ptp4l/phc2sys never remain alive.
+  # Stopping the target does not guarantee its required services stop.
+  # Shut down ptp4l and phc2sys explicitly.
   sudo systemctl stop \
     "$PTP_TARGET" \
     mid360-phc2sys.service \
@@ -646,7 +645,7 @@ stop_ptp_stack()
     sleep 0.25
   done
 
-  # One final exact stop attempt before reporting a dirty shutdown.
+  # Retry once if either PTP service remains active.
   sudo systemctl stop mid360-phc2sys.service mid360-ptp4l.service || true
 }
 
@@ -867,8 +866,7 @@ record_dataset()
     die "rosbag2 does not support --start-paused"
   fi
 
-  # Start rosbag2 paused so that topics which subscribe earlier do not
-  # accumulate extra messages before all 15 recorder subscriptions are ready.
+  # Start paused; resume only after all 15 topic subscriptions are ready.
   local start_paused=true
 
   cat > "$run/config/recording_request.yaml" <<EOF

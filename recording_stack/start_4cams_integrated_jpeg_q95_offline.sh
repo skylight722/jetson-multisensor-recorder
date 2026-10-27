@@ -10,11 +10,8 @@ set -u
 RUN=${1:-${DATA_ROOT:-$HOME/shared_dir/offline_projection_runs}/camera_run_$(date +%Y%m%d_%H%M%S)}
 mkdir -p "$RUN"
 
-# Persistent logical mapping:
-# cam0 = Left  = I2C/GMSL port 9-002b
-# cam1 = Front = I2C/GMSL port 10-002b
-# cam2 = Right = I2C/GMSL port 11-002b
-# cam3 = Rear  = I2C/GMSL port 12-002b
+# Camera order is fixed: left (9-002b), front (10-002b),
+# right (11-002b), rear (12-002b).
 SENSOR_NAMES=(
   "vi-output, tier4_imx490 9-002b"
   "vi-output, tier4_imx490 10-002b"
@@ -138,7 +135,7 @@ for i in 0 1 2 3; do
   echo "Starting cam${i} (${DIRECTIONS[$i]}): ${DEVICES[$i]}"
 
   stdbuf -oL -eL \
-  ros2 run v4l2_camera v4l2_camera_node --ros-args \
+    ros2 run v4l2_camera v4l2_camera_node --ros-args \
     -r __node:=camera_node \
     -r __ns:=/camera/cam${i} \
     -p video_device:="${DEVICES[$i]}" \
@@ -169,7 +166,7 @@ done
 printf '%s\n' "${PIDS[@]}" > "$RUN/camera_node_pids.txt"
 
 echo
-echo "Started four camera nodes."
+echo "Camera nodes started: 4"
 echo "Images: /camera/cam{0..3}/image_raw/compressed"
 echo "Logs: $RUN"
 

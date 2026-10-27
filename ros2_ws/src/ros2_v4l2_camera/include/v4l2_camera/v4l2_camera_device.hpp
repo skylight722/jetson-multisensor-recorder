@@ -33,7 +33,7 @@
 namespace v4l2_camera
 {
 
-// PHASE4B2_TIMESTAMP_DEBUG
+// Timing and V4L2 metadata sampled for each captured frame.
 struct CaptureTimestampMetadata
 {
   std::uint32_t sequence{0U};

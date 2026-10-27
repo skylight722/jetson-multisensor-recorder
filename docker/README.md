@@ -26,4 +26,4 @@ image from tested dependencies), verify versions, install our 4 ROS 2
 packages and the externally maintained Livox package, then test build and
 a full recording on a staging system. Do not replace the working container.
 
-See [Docker audit](../docs/DOCKER_AUDIT_20261026.md).
+See [deployment requirements](../docs/REPRODUCIBILITY_GAPS.md).

@@ -4,7 +4,7 @@ set -Eeuo pipefail
 COMPONENT=${1:?component required}
 RUN=${2:?run directory required}
 WS=${3:?workspace required}
-export WS  # pass the verified workspace path to child camera/exposure scripts
+export WS  # Shared by the camera and exposure launch scripts.
 CAMERA_SCRIPT=${4:?camera script required}
 
 STACK_DIR=$(
@@ -63,7 +63,9 @@ case "$COMPONENT" in
   exposure)
     mkdir -p "$RUN/logs/exposure"
 
-    stdbuf -oL -eL       bash "$EXPOSURE_SCRIPT" "$RUN/logs/exposure"       >"$RUN/logs/exposure_stack.log" 2>&1
+    stdbuf -oL -eL \
+      bash "$EXPOSURE_SCRIPT" "$RUN/logs/exposure" \
+      >"$RUN/logs/exposure_stack.log" 2>&1
     ;;
 
   recorder)
@@ -78,7 +80,7 @@ case "$COMPONENT" in
 
     mkdir -p "$RUN/config"
 
-    cp -a       "$QOS_OVERRIDES"       "$RUN/config/rosbag_qos_overrides.yaml"
+    cp -a "$QOS_OVERRIDES" "$RUN/config/rosbag_qos_overrides.yaml"
 
     cat > "$RUN/config/recorder_settings.yaml" <<EOF
 storage: mcap
@@ -104,16 +106,14 @@ EOF
     rm -f "$RECORDER_STDIN"
     mkfifo "$RECORDER_STDIN"
 
-    # Keep both ends open so that opening the FIFO never blocks and the
-    # recorder does not see EOF between control-key writes.
+    # Keep both FIFO ends open to avoid blocking and premature EOF.
     exec 9<>"$RECORDER_STDIN"
 
     recorder_cmd=(ros2 bag record "${args[@]}" "$@")
     printf -v recorder_cmd_q '%q ' "${recorder_cmd[@]}"
 
-    # rosbag2 Humble requires a terminal for keyboard pause/resume.
-    # util-linux script(1) creates a PTY for ros2 bag record while the FIFO
-    # remains our programmatic input channel for sending SPACE.
+    # rosbag2 uses terminal input for pause/resume. Run it in a PTY
+    # and send the resume key through the FIFO.
     set +e
     script -qefc "$recorder_cmd_q" /dev/null \
       <"$RECORDER_STDIN" \

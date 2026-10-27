@@ -201,7 +201,7 @@ V4L2Camera::V4L2Camera(rclcpp::NodeOptions const & options)
     rclcpp::SensorDataQoS() :
     rclcpp::QoS(10);
 
-  // PHASE4B2_TIMESTAMP_DEBUG
+  // Publish capture timing metadata alongside the images when enabled.
   enable_timestamp_debug_ =
     declare_parameter<bool>(
     "enable_timestamp_debug",
@@ -787,7 +787,7 @@ V4L2Camera::V4L2Camera(rclcpp::NodeOptions const & options)
       std::optional<std::chrono::steady_clock::time_point>
         first_capture_time;
 
-      // PHASE4B2_TIMESTAMP_DEBUG
+      // Timestamp metadata is published for each dequeued frame.
       const auto publish_timestamp_debug =
         [this](
         const std_msgs::msg::Header & header,
@@ -1443,7 +1443,6 @@ bool V4L2Camera::requestTimePerFrame(TimePerFrame const & tpf)
 
 static unsigned char CLIPVALUE(int val)
 {
-  // Old method (if)
   val = val < 0 ? 0 : val;
   return val > 255 ? 255 : val;
 }
@@ -1476,20 +1475,11 @@ static void YUV2RGB(
   const int y2 = static_cast<int>(y);
   const int u2 = static_cast<int>(u) - 128;
   const int v2 = static_cast<int>(v) - 128;
-  // std::cerr << "YUV=("<<y2<<","<<u2<<","<<v2<<")"<<std::endl;
-
-  // This is the normal YUV conversion, but
-  // appears to be incorrect for the firewire cameras
-  //   int r2 = y2 + ( (v2*91947) >> 16);
-  //   int g2 = y2 - ( ((u2*22544) + (v2*46793)) >> 16 );
-  //   int b2 = y2 + ( (u2*115999) >> 16);
-  // This is an adjusted version (UV spread out a bit)
+  // Adjusted coefficients for YUV-to-RGB conversion.
   int r2 = y2 + ((v2 * 37221) >> 15);
   int g2 = y2 - (((u2 * 12975) + (v2 * 18949)) >> 15);
   int b2 = y2 + ((u2 * 66883) >> 15);
-  // std::cerr << "   RGB=("<<r2<<","<<g2<<","<<b2<<")"<<std::endl;
-
-  // Cap the values.
+  // Clamp the channel values to the 8-bit range.
   *r = CLIPVALUE(r2);
   *g = CLIPVALUE(g2);
   *b = CLIPVALUE(b2);

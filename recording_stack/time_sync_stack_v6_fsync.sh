@@ -192,7 +192,7 @@ fsync_precheck()
 
   printf '%-36s : ' "MAX9296 MFP1 patch"
   if [[ -f "$max9296_module" ]] &&
-     grep -aFq        'Failed to disable LOCK output on MFP1.'        "$max9296_module"; then
+     grep -aFq 'Failed to disable LOCK output on MFP1.' "$max9296_module"; then
     echo "PASS"
   else
     echo "FAIL"
@@ -443,7 +443,7 @@ stop_command()
   local base_rc=0
   local fsync_rc=0
 
-  # 카메라가 먼저 완전히 종료된 뒤 FSYNC를 끈다.
+  # Stop camera capture before disabling the FSYNC trigger.
   run_base_stack stop "$@" || base_rc=$?
   stop_tsc || fsync_rc=$?
 
