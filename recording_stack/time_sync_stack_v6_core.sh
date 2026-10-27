@@ -567,7 +567,7 @@ start_stack()
   launch_component "$run" cameras
 
   if ! wait_for_topics "$run" "$BASE_TOPIC_COUNT"; then
-    log "Base 15-topic gate failed"
+    log "Base 11-topic gate failed"
     status_stack || true
     stop_stack || true
     die "Sensor stack did not publish all required topics"

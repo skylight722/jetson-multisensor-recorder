@@ -4,6 +4,7 @@ set -Eeuo pipefail
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 
 bash "$ROOT/scripts/check_source_snapshot.sh"
+python3 "$ROOT/scripts/audit_repository.py"
 
 echo 'Checking for unexpected binary data and archived recordings...'
 python3 - "$ROOT" <<'PY_CHECK'

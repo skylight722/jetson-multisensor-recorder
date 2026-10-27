@@ -1,6 +1,6 @@
+# Normalize text files and preserve Unix line endings for scripts and source.
 * text=auto
 
-# Keep source files in Unix format
 *.sh text eol=lf
 *.py text eol=lf
 *.c text eol=lf
