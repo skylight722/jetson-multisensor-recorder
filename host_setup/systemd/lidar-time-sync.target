@@ -1,0 +1,9 @@
+[Unit]
+Description=LiDAR-Camera PTP Time Synchronization
+Requires=mid360-ptp4l.service
+Requires=mid360-phc2sys.service
+After=mid360-ptp4l.service
+After=mid360-phc2sys.service
+
+[Install]
+WantedBy=multi-user.target

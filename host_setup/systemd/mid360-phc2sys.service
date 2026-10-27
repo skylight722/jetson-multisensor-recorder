@@ -1,0 +1,16 @@
+[Unit]
+Description=Synchronize eno1 PHC from CLOCK_REALTIME
+Requires=mid360-ptp4l.service
+After=mid360-ptp4l.service
+
+[Service]
+Type=simple
+ExecStartPre=/bin/sleep 2
+ExecStart=/usr/sbin/phc2sys -s CLOCK_REALTIME -c eno1 -O 0 -m
+Restart=on-failure
+RestartSec=2
+KillSignal=SIGINT
+TimeoutStopSec=5
+
+[Install]
+WantedBy=multi-user.target

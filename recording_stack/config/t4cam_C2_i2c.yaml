@@ -1,0 +1,25 @@
+ports:
+  - model: c2
+    device: /dev/i2c-9
+    address: 0x6d
+  - model: c2
+    device: /dev/i2c-9
+    address: 0x6e
+  - model: c2
+    device: /dev/i2c-10
+    address: 0x6d
+  - model: c2
+    device: /dev/i2c-10
+    address: 0x6e
+  - model: c2
+    device: /dev/i2c-11
+    address: 0x6d
+  - model: c2
+    device: /dev/i2c-11
+    address: 0x6e
+  - model: c2
+    device: /dev/i2c-12
+    address: 0x6d
+  - model: c2
+    device: /dev/i2c-12
+    address: 0x6e

@@ -1,0 +1,16 @@
+[Unit]
+Description=MID-360 PTP Master on eno1
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStartPre=/usr/bin/test -e /dev/ptp0
+ExecStart=/usr/sbin/ptp4l -f /etc/linuxptp/ptp4l-mid360-master.conf -m
+Restart=on-failure
+RestartSec=2
+KillSignal=SIGINT
+TimeoutStopSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>nvpps_ros_publisher</name>
+  <version>0.1.0</version>
+
+  <description>
+    Publishes NVIDIA NvPPS TSC-to-PTP correlation events as ROS 2 messages.
+  </description>
+
+  <maintainer email="misys@todo.todo">misys</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>rclcpp</depend>
+  <depend>time_sync_msgs</depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

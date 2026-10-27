@@ -1,0 +1,53 @@
+/camera/cam0/timestamp_debug:
+  history: keep_last
+  depth: 10000
+  reliability: reliable
+  durability: volatile
+
+/camera/cam1/timestamp_debug:
+  history: keep_last
+  depth: 10000
+  reliability: reliable
+  durability: volatile
+
+/camera/cam2/timestamp_debug:
+  history: keep_last
+  depth: 10000
+  reliability: reliable
+  durability: volatile
+
+/camera/cam3/timestamp_debug:
+  history: keep_last
+  depth: 10000
+  reliability: reliable
+  durability: volatile
+
+/livox/imu:
+  history: keep_last
+  depth: 10000
+  reliability: reliable
+  durability: volatile
+
+/camera/cam0/exposure_debug:
+  history: keep_last
+  depth: 10000
+  reliability: reliable
+  durability: volatile
+
+/camera/cam1/exposure_debug:
+  history: keep_last
+  depth: 10000
+  reliability: reliable
+  durability: volatile
+
+/camera/cam2/exposure_debug:
+  history: keep_last
+  depth: 10000
+  reliability: reliable
+  durability: volatile
+
+/camera/cam3/exposure_debug:
+  history: keep_last
+  depth: 10000
+  reliability: reliable
+  durability: volatile

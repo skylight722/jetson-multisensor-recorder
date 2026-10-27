@@ -1,0 +1,27 @@
+.git/
+build/
+install/
+log/
+__pycache__/
+*.pyc
+*.mcap
+*.db3
+*.bag
+runtime_fsync/
+*.pid
+*.log
+recordings/
+datasets/
+.env
+.env.*
+!.env.example
+*.before_*
+*.phase4b2_before
+*.bak
+*.bak_*
+
+# Device-specific secrets and exported credentials
+*.pem
+*.key
+*.p12
+*.pfx
